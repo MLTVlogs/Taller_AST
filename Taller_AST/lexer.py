@@ -157,7 +157,7 @@ if __name__ == '__main__':
 	if sys.platform != 'ios':
 		
 		if len(sys.argv) != 2:
-			raise SystemExit("Usage: python glexer.py <filename>")
+			raise SystemExit("Usage: python lexer.py <filename>")
 		
 		filename = sys.argv[1]
 		

@@ -2,6 +2,7 @@
 import logging
 import sly
 from rich import print
+from rich.tree import Tree
 from dataclasses import dataclass
 from typing import List, Any, Optional, Union
 from lexer  import Lexer
@@ -520,7 +521,7 @@ class Parser(sly.Parser):
 		
 	@_("ID index")
 	def group(self, p):
-		return p[0], p[1]
+		return _L(Index(p[0],p[1]),p.lineno)
 		
 	@_("factor")
 	def group(self, p):
@@ -537,7 +538,7 @@ class Parser(sly.Parser):
 	
 	@_("ID")
 	def factor(self, p):
-		return p[0]
+		return _L(Name(p[0]), p.lineno)
 		
 	@_("INTEGER_LITERAL")
 	def factor(self, p):
@@ -647,6 +648,23 @@ def ast_to_dict(node):
 		return {key: ast_to_dict(value) for key, value in node.__dict__.items()}
 	else:
 		return node
+	
+# AST Rich Tree
+def build_rich_tree(node):
+	label = type(node).__name__
+	tree = Tree(label)
+	print(node)
+
+	for key, value in vars(node).items():
+		if isinstance(value, List):
+			for item in value:
+				tree.add(build_rich_tree(item))
+		if hasattr(value, "__dict__"):
+			tree.add(build_rich_tree(value))
+		else:
+			tree.add(f"{key}: {value}")
+	
+	return tree
 
 # ===================================================
 # test
@@ -663,7 +681,7 @@ if __name__ == '__main__':
 	if sys.platform != 'ios':
 	
 		if len(sys.argv) != 2:
-			raise SystemExit("Usage: python gparse.py <filename>")
+			raise SystemExit("Usage: python parser.py <filename>")
 			
 		filename = sys.argv[1]
 		
@@ -680,7 +698,9 @@ if __name__ == '__main__':
 		txt = open(filename, encoding='utf-8').read()
 		ast = parse(txt)
 		if not errors_detected():
-			print(ast)
+			#print(ast_to_dict(ast))
+			tree = build_rich_tree(ast)
+			print(tree)
 
 		
 		
