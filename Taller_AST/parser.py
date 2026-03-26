@@ -8,7 +8,8 @@ from typing import List, Any, Optional, Union
 from lexer  import Lexer
 from errors import error, errors_detected
 from model  import *
-from graphviz import *
+from graphviz import Digraph
+import uuid
 
 
 def _L(node, lineno):
@@ -61,6 +62,12 @@ class DeclInit(Decl):
 	name: str
 	typ: Type
 	init: Any
+
+# ---------- Classes ----------
+@dataclass
+class ClassDecl(Decl):
+	name: str
+	body: List[Union[Decl, Stmt]]
 
 # ---------- Statement ----------
 class Stmt:
@@ -205,6 +212,10 @@ class Parser(sly.Parser):
 	@_("decl_init")
 	def decl(self, p):
 		return p[0]
+	
+	@_("class_decl")
+	def decl(self, p):
+		return p[0]
 		
 	# === DECLARACIONES con inicialización
 	
@@ -223,6 +234,17 @@ class Parser(sly.Parser):
 	@_("ID ':' type_func '=' '{' opt_stmt_list '}'")
 	def decl_init(self, p):
 		return _L(DeclInit(p[0],p[2],p[5]), p.lineno)
+	
+	# =================================================
+	# CLASSES
+	# =================================================
+
+	@_("id ':' CLASS '{' class_body '}'")
+	def class_decl(self, p):
+		return _L(ClassDecl(p[0], p[3]), p.lineno)
+
+
+
 		
 	# =================================================
 	# STATEMENTS
@@ -666,6 +688,28 @@ def build_rich_tree(node):
 	
 	return tree
 
+
+# AST a Graphviz
+def ast_to_graphviz(node, dot, parent_id=None):
+    node_id = str(uuid.uuid4())
+    label = type(node).__name__
+
+    dot.node(node_id, label)
+
+    if parent_id:
+        dot.edge(parent_id, node_id)
+
+    for field, value in vars(node).items():
+        if isinstance(value, list):
+            for item in value:
+                ast_to_graphviz(item, dot, node_id)
+        elif hasattr(value, "__dict__"):
+            ast_to_graphviz(value, dot, node_id)
+
+    return dot
+
+
+
 # ===================================================
 # test
 # ===================================================
@@ -676,31 +720,22 @@ def parse(txt):
 	
 	
 if __name__ == '__main__':
-	import sys, json
+	import sys
 	
-	if sys.platform != 'ios':
-	
-		if len(sys.argv) != 2:
-			raise SystemExit("Usage: python parser.py <filename>")
+	if len(sys.argv) != 3: raise SystemExit("Usage: python parser.py -graphviz <filename> or python parser.py -rich <filename>")
 			
-		filename = sys.argv[1]
-		
-	else:
-		from file_picker import file_picker_dialog
-		
-		filename = file_picker_dialog(
-			title='Seleccionar una archivo',
-			root_dir='./test/',
-			file_pattern='^.*[.]bpp'
-		)
+	filename = sys.argv[2]
 		
 	if filename:
 		txt = open(filename, encoding='utf-8').read()
 		ast = parse(txt)
-		if not errors_detected():
-			#print(ast_to_dict(ast))
-			tree = build_rich_tree(ast)
-			print(tree)
 
-		
-		
+		if not errors_detected():
+
+			if "-graphviz" in sys.argv:
+				graph = Digraph()
+				ast_to_graphviz(ast, graph)
+				graph.render('ast', format='png', cleanup=True)
+			elif "-rich" in sys.argv:
+				tree = build_rich_tree(ast)
+				print(tree)
