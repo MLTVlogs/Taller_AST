@@ -63,6 +63,12 @@ class DeclInit(Decl):
 	typ: Type
 	init: Any
 
+# ---------- Classes ----------
+@dataclass
+class ClassDecl(Decl):
+	name: str
+	body: List[Union[Decl, Stmt]]
+
 # ---------- Statement ----------
 class Stmt:
 	...
@@ -206,6 +212,10 @@ class Parser(sly.Parser):
 	@_("decl_init")
 	def decl(self, p):
 		return p[0]
+	
+	@_("class_decl")
+	def decl(self, p):
+		return p[0]
 		
 	# === DECLARACIONES con inicialización
 	
@@ -224,6 +234,17 @@ class Parser(sly.Parser):
 	@_("ID ':' type_func '=' '{' opt_stmt_list '}'")
 	def decl_init(self, p):
 		return _L(DeclInit(p[0],p[2],p[5]), p.lineno)
+	
+	# =================================================
+	# CLASSES
+	# =================================================
+
+	@_("id ':' CLASS '{' class_body '}'")
+	def class_decl(self, p):
+		return _L(ClassDecl(p[0], p[3]), p.lineno)
+
+
+
 		
 	# =================================================
 	# STATEMENTS
