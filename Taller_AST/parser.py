@@ -666,6 +666,34 @@ def build_rich_tree(node):
 	
 	return tree
 
+
+# AST a Graphviz
+def ast_to_graphviz(node, graph=None, parent_id=None):
+	#if graph is None:
+	#	graph = Digraph()
+	
+	node_id = str(id(node))
+	label = type(node).__name__
+	graph.node(node_id, label)
+	
+	if parent_id is not None:
+		graph.edge(parent_id, node_id)
+	
+	for key, value in vars(node).items():
+		if isinstance(value, list):
+			for item in value:
+				ast_to_graphviz(item, graph, node_id)
+		elif hasattr(value, "__dict__"):
+			ast_to_graphviz(value, graph, node_id)
+		else:
+			value_id = f"{node_id}_{key}"
+			graph.node(value_id, f"{key}: {value}")
+			graph.edge(node_id, value_id)
+	
+	return graph
+
+
+
 # ===================================================
 # test
 # ===================================================
@@ -676,31 +704,24 @@ def parse(txt):
 	
 	
 if __name__ == '__main__':
-	import sys, json
+	import sys
 	
-	if sys.platform != 'ios':
-	
-		if len(sys.argv) != 2:
-			raise SystemExit("Usage: python parser.py <filename>")
+	if len(sys.argv) != 3: raise SystemExit("Usage: python parser.py -graphviz <filename> or python parser.py -rich <filename>")
 			
-		filename = sys.argv[1]
-		
-	else:
-		from file_picker import file_picker_dialog
-		
-		filename = file_picker_dialog(
-			title='Seleccionar una archivo',
-			root_dir='./test/',
-			file_pattern='^.*[.]bpp'
-		)
+	filename = sys.argv[2]
 		
 	if filename:
 		txt = open(filename, encoding='utf-8').read()
 		ast = parse(txt)
+
 		if not errors_detected():
-			#print(ast_to_dict(ast))
-			tree = build_rich_tree(ast)
-			print(tree)
+
+			if "-graphviz" in sys.argv:
+				graph = ast_to_graphviz(ast)
+				graph.render('ast', format='png', cleanup=True)
+			elif "-rich" in sys.argv:
+				tree = build_rich_tree(ast)
+				print(tree)
 
 		
 		
