@@ -9,8 +9,8 @@ from errors import error, errors_detected
 class Lexer(sly.Lexer):
 	tokens = {
 		# keywords
-		ARRAY, AUTO, BOOLEAN, CHAR, CONSTANT,ELSE, FALSE, 
-		FLOAT, FOR, FUNCTION, IF, INTEGER, PRINT, RETURN,
+		ARRAY, AUTO, BOOLEAN, CHAR, CLASS, CONSTANT,ELSE, FALSE, 
+		FLOAT, FOR, FUNCTION, IF, INTEGER, NEW, PRINT, RETURN,
 		STRING, TRUE, VOID, WHILE, BREAK, CONTINUE,
 		
 		# operator
@@ -19,9 +19,9 @@ class Lexer(sly.Lexer):
 		ADDEQ, SUBEQ, MULEQ, DIVEQ, MODEQ,
 		
 		# other tokens
-		ID, CHAR_LITERAL, FLOAT_LITERAL, INTEGER_LITERAL, STRING_LITERAL,
+		ID, CHAR_LITERAL, FLOAT_LITERAL, INTEGER_LITERAL, STRING_LITERAL
 	}
-	literals = '+-*/%^=:;,()[]{}!'
+	literals = '+-*/%^=:;.,()[]{}!'
 
 	# ignore
 	ignore = ' \t\r'
@@ -72,6 +72,7 @@ class Lexer(sly.Lexer):
 	ID['auto']     = AUTO
 	ID['boolean']  = BOOLEAN
 	ID['char']     = CHAR
+	ID['class']    = CLASS
 	ID['constant'] = CONSTANT
 	ID['else']     = ELSE
 	ID['false']    = FALSE
@@ -80,6 +81,7 @@ class Lexer(sly.Lexer):
 	ID['function'] = FUNCTION
 	ID['if']       = IF
 	ID['integer']  = INTEGER
+	ID['new']	   = NEW
 	ID['print']    = PRINT
 	ID['return']   = RETURN
 	ID['string']   = STRING

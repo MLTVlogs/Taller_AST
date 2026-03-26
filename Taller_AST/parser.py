@@ -62,6 +62,11 @@ class DeclInit(Decl):
 	typ: Type
 	init: Any
 
+@dataclass
+class ClassDecl(Decl):
+	name: str
+	body: List[Decl]
+
 # ---------- Statement ----------
 class Stmt:
 	...
@@ -132,6 +137,11 @@ class Call(Expr):
 	args: List[Expr]
 
 @dataclass
+class MemberCall(Expr):
+	target: str
+	members: List[Expr]
+
+@dataclass
 class Assign(Expr):
 	target:Expr
 	value: Expr
@@ -156,6 +166,13 @@ class PrefixOp(Expr):
 class PostfixOp(Expr):
 	op: str
 	expr: Expr
+
+@dataclass
+class Constructor(Expr):
+	type: str
+	atts: List[Expr]
+
+# ---------- Members ----------
 
 # PARSER
 class Parser(sly.Parser):
@@ -201,6 +218,10 @@ class Parser(sly.Parser):
 	@_("ID ':' type_func ';'")
 	def decl(self, p):
 		return _L(DeclTyped(p[0],p[2]), p.lineno)
+	
+	@_("class_decl")
+	def decl(self, p):
+		return p[0]
 		
 	@_("decl_init")
 	def decl(self, p):
@@ -223,6 +244,24 @@ class Parser(sly.Parser):
 	@_("ID ':' type_func '=' '{' opt_stmt_list '}'")
 	def decl_init(self, p):
 		return _L(DeclInit(p[0],p[2],p[5]), p.lineno)
+	
+	# === DECLARACIONES de clases
+
+	@_("ID ':' CLASS '=' '{' class_body '}'")
+	def class_decl(self, p):
+		return _L(ClassDecl(p[0], p[5]), p.lineno)
+
+	@_("class_body class_member")
+	def class_body(self, p):
+		return [p[0]], p[1]
+
+	@_("empty")
+	def class_body(self, p):
+		return []
+	
+	@_("decl")
+	def class_member(self, p):
+		return p[0]
 		
 	# =================================================
 	# STATEMENTS
@@ -331,7 +370,7 @@ class Parser(sly.Parser):
 	# PRINT
 	@_("PRINT opt_expr_list ';'")
 	def print_stmt(self, p):
-		return _L(Print(p[1]), p)
+		return _L(Print(p[1]), p.lineno)
 		
 	# RETURN
 	@_("RETURN opt_expr ';'")
@@ -522,6 +561,14 @@ class Parser(sly.Parser):
 	@_("ID index")
 	def group(self, p):
 		return _L(Index(p[0],p[1]),p.lineno)
+	
+	@_("ID member_acc_list")
+	def group(self, p):
+		return _L(MemberCall(p[0],p[1]), p.lineno)
+
+	@_("NEW type_simple '(' opt_expr_list ')'")
+	def group(self, p):
+		return _L(Constructor(p[1],p[3]), p.lineno)
 		
 	@_("factor")
 	def group(self, p):
@@ -532,6 +579,29 @@ class Parser(sly.Parser):
 	def index(self, p):
 		return [p[1]]
 	
+	# ------------------------------------------------
+	# ACCESO A MIEMBROS
+	# ------------------------------------------------
+	@_("member_acc")
+	def member_acc_list(self, p):
+		return p[0]
+	
+	@_("member_acc_list member_acc")
+	def member_acc_list(self, p):
+		return [p[0]] + p[1]
+	
+	@_("'.' ID")
+	def member_acc(self, p):
+		return _L(Name(p[1]), p.lineno)
+
+	@_("'.' ID index")
+	def member_acc(self, p):
+		return _L(Index(p[1],p[2]), p.lineno)
+
+	@_("'.' ID '(' opt_expr_list ')'")
+	def member_acc(self, p):
+		return _L(Call(p[1],p[3]), p.lineno)
+
 	# -------------------------------------------------
 	# FACTORES
 	# -------------------------------------------------
@@ -570,6 +640,7 @@ class Parser(sly.Parser):
 	@_("CHAR")
 	@_("STRING")
 	@_("VOID")
+	@_("ID")
 	def type_simple(self, p):
 		return SimpleType(p[0])
 		
