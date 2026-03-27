@@ -777,8 +777,7 @@ if __name__ == '__main__':
 			ast = parse(txt)
 		except Exception:
 			pass
-
-		if not errors_detected:
+		else:
 			if "-graphviz" in sys.argv:
 				graph = Digraph()
 				ast_to_graphviz(ast, graph)
