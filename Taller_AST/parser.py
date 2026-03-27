@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import List, Any, Optional, Union
 from lexer  import Lexer
 from errors import error, errors_detected
-from model  import *
 from graphviz import Digraph
 import uuid
 
@@ -66,7 +65,7 @@ class DeclInit(Decl):
 @dataclass
 class ClassDecl(Decl):
 	name: str
-	body: List[Decl]
+	body: Optional[List[Decl]]
 
 # ---------- Statement ----------
 class Stmt:
@@ -146,6 +145,13 @@ class MemberCall(Expr):
 class Assign(Expr):
 	target:Expr
 	value: Expr
+
+@dataclass
+class TernOp(Expr):
+	cond: Expr
+	then: Expr
+	otherwise: Expr
+
 
 @dataclass
 class BinOp(Expr):
@@ -228,10 +234,6 @@ class Parser(sly.Parser):
 	def decl(self, p):
 		return p[0]
 	
-	@_("class_decl")
-	def decl(self, p):
-		return p[0]
-		
 	# === DECLARACIONES con inicialización
 	
 	@_("ID ':' type_simple '=' expr ';'")
@@ -252,21 +254,29 @@ class Parser(sly.Parser):
 	
 	# === DECLARACIONES de clases
 
-	@_("ID ':' CLASS '=' '{' class_body '}'")
+	@_("ID ':' CLASS '=' '{' opt_class_body '}'")
 	def class_decl(self, p):
 		return _L(ClassDecl(p[0], p[5]), p.lineno)
-
-	@_("class_body class_member")
-	def class_body(self, p):
-		return [p[0]], p[1]
-
+	
+	@_("class_body")
+	def opt_class_body(self, p):
+		return p[0]
+	
 	@_("empty")
-	def class_body(self, p):
+	def opt_class_body(self, p):
 		return []
+
+	@_("class_member class_body")
+	def class_body(self, p):
+		return p[0] + p[1]
+
+	@_("class_member")
+	def class_body(self, p):
+		return p[0]
 	
 	@_("decl")
 	def class_member(self, p):
-		return p[0]
+		return [p[0]]
 		
 	# =================================================
 	# STATEMENTS
@@ -452,21 +462,21 @@ class Parser(sly.Parser):
 		
 	@_("ID index")
 	def lval(self, p):
-		return p[0] + p[1]
+		return p[0], p[1]
 		
 	# -------------------------------------------------
 	# OPERADORES
 	# -------------------------------------------------
-	
-	@_("expr2 LOR expr3")
+
+	@_("expr2 '?' expr3 ':' expr3")
 	def expr2(self, p):
-		return _L(BinOp(p[1],p[0],p[2]),p.lineno)
-		
+		return _L(TernOp(p[0],p[2],p[4]),p.lineno)
+
 	@_("expr3")
 	def expr2(self, p):
 		return p[0]
-		
-	@_("expr3 LAND expr4")
+	
+	@_("expr3 LOR expr4")
 	def expr3(self, p):
 		return _L(BinOp(p[1],p[0],p[2]),p.lineno)
 		
@@ -474,31 +484,29 @@ class Parser(sly.Parser):
 	def expr3(self, p):
 		return p[0]
 		
-	@_("expr4 EQ expr5")
-	@_("expr4 NE expr5")
-	@_("expr4 LT expr5")
-	@_("expr4 LE expr5")
-	@_("expr4 GT expr5")
-	@_("expr4 GE expr5")
+	@_("expr4 LAND expr5")
 	def expr4(self, p):
 		return _L(BinOp(p[1],p[0],p[2]),p.lineno)
-
+		
 	@_("expr5")
 	def expr4(self, p):
 		return p[0]
 		
-	@_("expr5 '+' expr6")
-	@_("expr5 '-' expr6")
+	@_("expr5 EQ expr6")
+	@_("expr5 NE expr6")
+	@_("expr5 LT expr6")
+	@_("expr5 LE expr6")
+	@_("expr5 GT expr6")
+	@_("expr5 GE expr6")
 	def expr5(self, p):
 		return _L(BinOp(p[1],p[0],p[2]),p.lineno)
-		
+
 	@_("expr6")
 	def expr5(self, p):
 		return p[0]
 		
-	@_("expr6 '*' expr7")
-	@_("expr6 '/' expr7")
-	@_("expr6 '%' expr7")
+	@_("expr6 '+' expr7")
+	@_("expr6 '-' expr7")
 	def expr6(self, p):
 		return _L(BinOp(p[1],p[0],p[2]),p.lineno)
 		
@@ -506,7 +514,9 @@ class Parser(sly.Parser):
 	def expr6(self, p):
 		return p[0]
 		
-	@_("expr7 '^' expr8")
+	@_("expr7 '*' expr8")
+	@_("expr7 '/' expr8")
+	@_("expr7 '%' expr8")
 	def expr7(self, p):
 		return _L(BinOp(p[1],p[0],p[2]),p.lineno)
 		
@@ -514,17 +524,25 @@ class Parser(sly.Parser):
 	def expr7(self, p):
 		return p[0]
 		
-	@_("'-' expr8")
-	@_("'!' expr8")
+	@_("expr8 '^' expr9")
 	def expr8(self, p):
-		return _L(UnaryOp(p[0],p[1]),p.lineno)
-
+		return _L(BinOp(p[1],p[0],p[2]),p.lineno)
+		
 	@_("expr9")
 	def expr8(self, p):
 		return p[0]
+		
+	@_("'-' expr9")
+	@_("'!' expr9")
+	def expr9(self, p):
+		return _L(UnaryOp(p[0],p[1]),p.lineno)
+
+	@_("expr10")
+	def expr9(self, p):
+		return p[0]
 
 	@_("postfix")
-	def expr9(self, p):
+	def expr10(self, p):
 		return p[0]
 
 	@_("primary")
@@ -705,31 +723,11 @@ class Parser(sly.Parser):
 		value = repr(p.value) if p else 'EOF'
 		error(f'Syntax error at {value}', lineno)
 		
-# ===================================================
-# Utilidad: convertir algo en bloque si no lo es
-# ===================================================
-def as_block(x):
-	if isinstance(x, Block):
-		return x
-	if isinstance(x, list):
-		return Block(x)
-	return Block([x])
-	
-	
-# Convertir AST a diccionario
-def ast_to_dict(node):
-	if isinstance(node, list):
-		return [ast_to_dict(item) for item in node]
-	elif hasattr(node, "__dict__"):
-		return {key: ast_to_dict(value) for key, value in node.__dict__.items()}
-	else:
-		return node
-	
+
 # AST Rich Tree
 def build_rich_tree(node):
 	label = type(node).__name__
 	tree = Tree(label)
-	print(node)
 
 	for key, value in vars(node).items():
 		if isinstance(value, List):
@@ -741,7 +739,6 @@ def build_rich_tree(node):
 			tree.add(f"{key}: {value}")
 	
 	return tree
-
 
 # AST a Graphviz
 def ast_to_graphviz(node, dot, parent_id=None):
@@ -762,16 +759,10 @@ def ast_to_graphviz(node, dot, parent_id=None):
 
     return dot
 
-
-
-# ===================================================
-# test
-# ===================================================
 def parse(txt):
 	l = Lexer()
 	p = Parser()	
 	return p.parse(l.tokenize(txt))
-	
 	
 if __name__ == '__main__':
 	import sys
@@ -782,14 +773,16 @@ if __name__ == '__main__':
 		
 	if filename:
 		txt = open(filename, encoding='utf-8').read()
-		ast = parse(txt)
+		try:
+			ast = parse(txt)
+		except Exception:
+			pass
 
-		if not errors_detected():
-
+		if not errors_detected:
 			if "-graphviz" in sys.argv:
 				graph = Digraph()
 				ast_to_graphviz(ast, graph)
-				graph.render('ast', format='png', cleanup=True)
+				graph.render(f'{filename.rstrip(".bminor")}_ast', format='png', cleanup=True)
 			elif "-rich" in sys.argv:
 				tree = build_rich_tree(ast)
 				print(tree)

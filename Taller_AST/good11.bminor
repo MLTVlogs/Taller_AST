@@ -1,0 +1,7 @@
+point: float = 6.8;
+result: string = point >= 6.6 ? "Approved" : "Denied";
+
+main: function integer() = {
+    print result;
+    return 0;
+}

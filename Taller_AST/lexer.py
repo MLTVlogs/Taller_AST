@@ -5,6 +5,8 @@ import sly
 
 from errors import error, errors_detected
 
+class LexicalError(Exception):
+	...
 
 class Lexer(sly.Lexer):
 	tokens = {
@@ -21,7 +23,7 @@ class Lexer(sly.Lexer):
 		# other tokens
 		ID, CHAR_LITERAL, FLOAT_LITERAL, INTEGER_LITERAL, STRING_LITERAL
 	}
-	literals = '+-*/%^=:;.,()[]{}!'
+	literals = '+-*/%^=:;.,()[]{}!?'
 
 	# ignore
 	ignore = ' \t\r'
@@ -126,7 +128,8 @@ class Lexer(sly.Lexer):
 		return t
 	
 	def error(self, t):
-		error(f"Carcater Ilegal '{t.value[0]}'", t.lineno)
+		#print(f"Línea {self.lineno}: Caracter Inválido {t.value[0]}")
+		error(f"Caracter Ilegal '{t.value[0]}'", t.lineno)
 		self.index += 1
 
 
@@ -162,15 +165,6 @@ if __name__ == '__main__':
 			raise SystemExit("Usage: python lexer.py <filename>")
 		
 		filename = sys.argv[1]
-		
-	else:
-		from File_Picker import file_picker_dialog
-	
-		filename = file_picker_dialog(
-			title='Seleccionar una archivo',
-			root_dir='./test/cool/',
-			file_pattern='^.*[.]bminor'
-		)
 
 	if filename:
 		tokenize(filename)

@@ -1,0 +1,24 @@
+People: class = {
+    init : function void(id: integer, name: string, age: integer) = {
+        id: integer = id;
+        name: string = name;
+        age: integer = age;
+    }
+
+    greeting: function void() = {
+        print "Hello, my name is", name, "\n";
+        return;
+    }
+}
+
+main : function integer () = {
+    p1: People;
+    p1 = new People(1,"juan",31);
+    p2: People = new People(2, "mateo", 19);
+
+    p1.greeting();
+    print p2.id;
+
+    return 0;
+}
+
